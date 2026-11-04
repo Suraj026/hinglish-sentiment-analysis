@@ -1,0 +1,45 @@
+{
+  "handoff": "H1",
+  "seed": 42,
+  "files": {
+    "train": {
+      "path": "C:\\Users\\venom\\Desktop\\higlish-sentiment-analysis\\data\\processed\\train.csv",
+      "sha256": "dd3d3a35950c6f8a19ff1a0e52bfd47878b8953752b9988156bbc738392446f2",
+      "row_count": 14594,
+      "columns": [
+        "uid",
+        "text_clean",
+        "label"
+      ],
+      "label_counts": {
+        "0": 4252,
+        "1": 5473,
+        "2": 4869
+      }
+    },
+    "val": {
+      "path": "C:\\Users\\venom\\Desktop\\higlish-sentiment-analysis\\data\\processed\\val.csv",
+      "sha256": "25d3277a21ba78a593cafa8a4251d2a696f89ecd52a0cc9d29cb9bfce7b49414",
+      "row_count": 3000,
+      "columns": [
+        "uid",
+        "text_clean",
+        "label"
+      ],
+      "label_counts": {
+        "0": 890,
+        "1": 1128,
+        "2": 982
+      }
+    },
+    "test": {
+      "path": "C:\\Users\\venom\\Desktop\\higlish-sentiment-analysis\\data\\processed\\test.csv",
+      "sha256": "1058ce3def242484e1110ce2a3ac9bc969d63d9e48d901131b07982e63f47c05",
+      "row_count": 3000,
+      "columns": [
+        "uid",
+        "text_clean"
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "config": {
+    "normalize": true,
+    "lowercase": true,
+    "hashtag_mode": "keep"
+  },
+  "spelling_map": {
+    "nahin": "nahi",
+    "nahee": "nahi",
+    "nahein": "nahi"
+  }
+}
