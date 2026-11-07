@@ -1,0 +1,3 @@
+model,embedding,normalized,accuracy,macro_f1,weighted_f1,seed
+logistic_regression,tfidf_word,True,0.8716666666666667,0.8719155477320047,0.8716173700248004,42
+logistic_regression,tfidf_word,True,0.871,0.8712374128271151,0.87096294511212,42
