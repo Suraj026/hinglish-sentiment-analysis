@@ -347,3 +347,4 @@ if __name__ == "__main__":
     else:
         result = train_baseline_model(model_name=args.model, seed=args.seed)
         print(json.dumps(result, indent=2))
+

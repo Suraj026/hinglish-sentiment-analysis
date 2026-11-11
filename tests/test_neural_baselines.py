@@ -68,3 +68,4 @@ def test_overfit_test_decreases_loss():
 
     final_loss = overfit_test(model, batch, device, iterations=25, lr=5e-2)
     assert final_loss < 0.5
+

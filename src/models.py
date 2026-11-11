@@ -300,3 +300,4 @@ def build_model(
             f"Unsupported model architecture: {model_name}. "
             "Supported: 'lstm', 'bilstm', 'cnn', 'bilstm_conv'"
         )
+
