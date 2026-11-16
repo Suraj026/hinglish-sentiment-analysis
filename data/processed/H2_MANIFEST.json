@@ -1,0 +1,71 @@
+{
+  "handoff": "H2",
+  "seed": 42,
+  "files": {
+    "train": {
+      "path": "data/processed/train.csv",
+      "sha256": "08784cb27f129d206d40b67e5251ee2897b7777b059b7082871f5d2924cd13f1",
+      "row_count": 14594,
+      "columns": [
+        "uid",
+        "text_clean",
+        "label"
+      ],
+      "label_counts": {
+        "0": 4252,
+        "1": 5473,
+        "2": 4869
+      }
+    },
+    "val": {
+      "path": "data/processed/val.csv",
+      "sha256": "d6e059e457ce5476e993422647798767d83ebabd3152c94c46ecf7f2ef8cf65e",
+      "row_count": 3000,
+      "columns": [
+        "uid",
+        "text_clean",
+        "label"
+      ],
+      "label_counts": {
+        "0": 890,
+        "1": 1128,
+        "2": 982
+      }
+    },
+    "test": {
+      "path": "data/processed/test.csv",
+      "sha256": "e56de949389366b49c8c873a238a8bbadf3db6920afa526da42553f1fbfb2478",
+      "row_count": 3000,
+      "columns": [
+        "uid",
+        "text_clean"
+      ]
+    },
+    "preprocessor": {
+      "path": "data/processed/preprocessor.json",
+      "sha256": "6da732aade705755f84a2d875ae6dabcfa0888929423dafe90cdc2cc59e7b90d"
+    },
+    "fasttext_model": {
+      "path": "embeddings/fasttext.model",
+      "sha256": "a6adeaa4762fad45447c30201d4125ff7296543440ee4b0911a617cce6ecd2a6"
+    },
+    "vocab": {
+      "path": "embeddings/vocab.json",
+      "sha256": "ee983a3c640a7e9efeb1b1602547575c9ab85a457942530ba3faa95b3d04721d"
+    }
+  },
+  "recommended_max_seq_length": {
+    "p90": 21,
+    "p95": 22,
+    "p99": 25,
+    "max": 104
+  },
+  "embedding_metadata": {
+    "model_type": "FastText (skipgram, subword)",
+    "vector_size": 16,
+    "window": 3,
+    "vocab_size": 28947,
+    "trained_on": "train.csv (train-split only)"
+  },
+  "recommended_initial_text": "normalized"
+}

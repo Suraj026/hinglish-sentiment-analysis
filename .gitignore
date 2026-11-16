@@ -1,1 +1,8 @@
 plan/
+docs/
+.venv/
+.pytest_cache/
+__pycache__/
+.vscode/
+*.pyc
+embeddings/
