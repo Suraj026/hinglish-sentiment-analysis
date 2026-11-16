@@ -1,8 +1,54 @@
+# Environments and Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node & Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+node_modules/
+dist/
+
+# Large Model Weights and Checkpoints
+*.pt
+*.pth
+*.bin
+*.pkl
+*.h5
+*.onnx
+results/weights/
+results/weights/*
+!results/weights/.gitkeep
+
+# Heavy Data & Processed CSV / TSV files
+data/*.tsv
+data/processed/*.csv
+figures/*.csv
+results/predictions/*.csv
+!results/predictions/.gitkeep
+!data/processed/.gitkeep
+
+# Embeddings & Binary Models
+embeddings/
+
+# Planning & Scratch docs
 plan/
 docs/
-.venv/
-.pytest_cache/
-__pycache__/
-.vscode/
-*.pyc
-embeddings/
+scratch/

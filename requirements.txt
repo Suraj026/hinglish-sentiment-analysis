@@ -7,3 +7,7 @@ matplotlib
 seaborn
 pytest
 gradio
+# Backend API
+fastapi
+uvicorn[standard]
+python-multipart
