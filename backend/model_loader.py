@@ -1,17 +1,9 @@
-"""Model registry — loads PyTorch checkpoints or falls back to fast heuristic inference.
-
-Provides robust serving across environments:
-- If PyTorch and weights are loaded, performs real neural model inference.
-- If PyTorch is unavailable in the environment, uses a calibrated lexicon + n-gram
-  probabilistic engine matching the exact output contracts and response times.
-"""
+"""Model registry for trained PyTorch sentiment models."""
 
 from __future__ import annotations
 
 import json
 import logging
-import math
-import re
 import sys
 import time
 from collections import deque
@@ -28,9 +20,10 @@ logger = logging.getLogger(__name__)
 
 _WEIGHTS_DIR = _REPO_ROOT / "results" / "weights"
 _PREPROCESSOR_PATH = _REPO_ROOT / "data" / "processed" / "preprocessor.json"
-_TRAIN_CSV = _REPO_ROOT / "data" / "processed" / "train.csv"
+_VOCAB_PATH = _REPO_ROOT / "embeddings" / "vocab.json"
 
 ID_TO_LABEL = {0: "negative", 1: "neutral", 2: "positive"}
+
 
 _MODEL_CONFIGS: dict[str, dict] = {
     "bilstm_conv": {
@@ -67,35 +60,13 @@ _MODEL_CONFIGS: dict[str, dict] = {
     },
 }
 
-# Calibrated Hinglish sentiment lexicon for standalone inference mode
-_POSITIVE_WORDS = {
-    "accha", "acchi", "achha", "achhi", "badiya", "badhiya", "mast", "zabardast",
-    "shandar", "shaandar", "pyara", "pyaara", "sahi", "khush", "happy", "great",
-    "superb", "awesome", "love", "best", "good", "nice", "solid", "perfect",
-    "pasand", "shukriya", "dhanyawad", "congrats", "badhai", "jai", "faadu",
-    "jhakaas", "kamal", "kamaal", "beautiful", "excellent", "worth", "top",
-    "bahut accha", "bahut acchi", "sabse badhiya", "dil khush", "ek number",
-}
-
-_NEGATIVE_WORDS = {
-    "kharab", "bekar", "bura", "buri", "ganda", "gandi", "ghatiya", "bakwas",
-    "bekaar", "faltu", "faaltu", "worst", "bad", "terrible", "waste", "hate",
-    "scam", "dhokha", "fraud", "bewakoof", "chutiya", "bakwaas", "sad", "dukhi",
-    "pareshan", "problem", "issue", "kharid mat", "mat lena", "chhoro", "ghatiya",
-    "nahi", "nahin", "naa", "kuch nahi", "bilkul nahi", "never", "disappointing",
-    "disappointed", "slow", "lag", "loot", "lut", "chor", "loss", "bekar product",
-}
-
-
-def _tokenize(text: str) -> list[str]:
-    clean = re.sub(r"[^\w\s]", " ", text.lower())
-    return [t for t in clean.split() if t]
-
-
 class ModelRegistry:
     def __init__(self) -> None:
         self._initialized = False
-        self._has_torch = False
+        self._preprocessor: Any = None
+        self._vocab: dict[str, int] = {}
+        self._max_len = 0
+        self._torch: Any = None
         self._models: dict[str, Any] = {}
         self._stats: dict[str, dict] = {
             name: {"inference_count": 0, "total_latency_ms": 0.0}
@@ -109,19 +80,80 @@ class ModelRegistry:
 
     def initialize(self) -> None:
         try:
-            import torch  # type: ignore
-            self._has_torch = True
-            logger.info("PyTorch detected, attempting checkpoint loading...")
-        except ImportError:
-            self._has_torch = False
-            logger.info("Running in calibrated neural simulation mode")
+            import torch
+        except ImportError as exc:
+            raise RuntimeError(
+                "PyTorch is required to load the trained sentiment checkpoints"
+            ) from exc
 
-        # Mark all configured models as active
-        for name in _MODEL_CONFIGS:
-            self._models[name] = True
+        from src.models import build_model
+        from src.preprocess import Preprocessor
+
+        with _VOCAB_PATH.open(encoding="utf-8") as vocab_file:
+            raw_vocab = json.load(vocab_file)
+        if not isinstance(raw_vocab, dict):
+            raise ValueError(f"Invalid vocabulary format in {_VOCAB_PATH}")
+        vocab = {"<pad>": 0, "<unk>": 1}
+        for token in raw_vocab:
+            if token not in vocab:
+                vocab[token] = len(vocab)
+
+        preprocessor = Preprocessor.load(_PREPROCESSOR_PATH)
+        loaded_models: dict[str, Any] = {}
+        max_len: int | None = None
+        for name, config in _MODEL_CONFIGS.items():
+            checkpoint_path = _WEIGHTS_DIR / config["checkpoint"]
+            checkpoint = torch.load(
+                checkpoint_path, map_location="cpu", weights_only=True
+            )
+            if not isinstance(checkpoint, dict):
+                raise ValueError(f"Invalid checkpoint format in {checkpoint_path}")
+            if checkpoint.get("model_name") != name:
+                raise ValueError(f"Unexpected model name in {checkpoint_path}")
+            checkpoint_vocab_size = checkpoint.get("vocab_size")
+            if (
+                not isinstance(checkpoint_vocab_size, int)
+                or checkpoint_vocab_size < len(vocab)
+            ):
+                raise ValueError(
+                    f"Checkpoint vocabulary is smaller than {_VOCAB_PATH}: "
+                    f"{checkpoint_path}"
+                )
+            if checkpoint.get("label_mapping") != {
+                label: class_id for class_id, label in ID_TO_LABEL.items()
+            }:
+                raise ValueError(f"Unexpected label mapping in {checkpoint_path}")
+
+            checkpoint_max_len = checkpoint.get("max_len")
+            if not isinstance(checkpoint_max_len, int) or checkpoint_max_len <= 0:
+                raise ValueError(f"Invalid max_len in {checkpoint_path}")
+            if max_len is not None and max_len != checkpoint_max_len:
+                raise ValueError("Model checkpoints use different sequence lengths")
+            max_len = checkpoint_max_len
+
+            model = build_model(
+                model_name=name,
+                vocab_size=checkpoint_vocab_size,
+                embedding_dim=checkpoint["embedding_dim"],
+                hidden_dim=checkpoint["hidden_dim"],
+                num_classes=len(ID_TO_LABEL),
+                padding_idx=0,
+            )
+            model.load_state_dict(checkpoint["model_state_dict"], strict=True)
+            model.eval()
+            loaded_models[name] = model
+
+        self._torch = torch
+        self._preprocessor = preprocessor
+        self._vocab = vocab
+        self._max_len = max_len or 0
+        self._models = loaded_models
 
         self._initialized = True
-        logger.info("ModelRegistry ready with %d registered models", len(self._models))
+        logger.info(
+            "ModelRegistry loaded %d trained neural models",
+            len(self._models),
+        )
 
     @property
     def models_loaded(self) -> bool:
@@ -143,64 +175,26 @@ class ModelRegistry:
             model_name = "bilstm_conv"
 
         t0 = time.perf_counter()
-        tokens = _tokenize(text)
-        lower_text = text.lower()
+        if self._preprocessor is None or self._torch is None:
+            raise RuntimeError("The trained sentiment models have not been loaded")
 
-        # Score words using sentiment cues and negation
-        pos_score = sum(1.5 if w in _POSITIVE_WORDS else 0 for w in tokens)
-        neg_score = sum(1.5 if w in _NEGATIVE_WORDS else 0 for w in tokens)
-
-        # Bigram cues
-        for pw in _POSITIVE_WORDS:
-            if " " in pw and pw in lower_text:
-                pos_score += 2.5
-        for nw in _NEGATIVE_WORDS:
-            if " " in nw and nw in lower_text:
-                neg_score += 2.5
-
-        # Check for negation patterns (e.g. "nahi aaya", "pasand nahi")
-        if "nahi" in lower_text or "nahin" in lower_text:
-            if "pasand" in lower_text or "acchi" in lower_text or "accha" in lower_text:
-                neg_score += 3.0
-
-        # Model architecture subtle variations
-        jitter = 0.0
-        if model_name == "bilstm_conv":
-            jitter = 0.05  # Highest discriminative fidelity
-        elif model_name == "cnn":
-            # CNN detects short n-gram phrases strongly
-            if pos_score > 0: pos_score += 0.2
-            if neg_score > 0: neg_score += 0.2
-
-        raw_pos = pos_score + (0.3 if "😊" in text or "!" in text else 0.0)
-        raw_neg = neg_score + (0.5 if "worst" in lower_text or "bekar" in lower_text else 0.0)
-
-        diff = raw_pos - raw_neg
-
-        if diff > 0.5:
-            pred = "positive"
-            p_pos = min(0.96, 0.70 + 0.05 * diff + jitter)
-            p_neg = max(0.01, (1.0 - p_pos) * 0.35)
-            p_neu = round(1.0 - p_pos - p_neg, 4)
-        elif diff < -0.5:
-            pred = "negative"
-            p_neg = min(0.96, 0.70 + 0.05 * abs(diff) + jitter)
-            p_pos = max(0.01, (1.0 - p_neg) * 0.35)
-            p_neu = round(1.0 - p_pos - p_neg, 4)
-        else:
-            pred = "neutral"
-            p_neu = min(0.85, 0.65 + jitter)
-            p_pos = round((1.0 - p_neu) / 2.0, 4)
-            p_neg = round(1.0 - p_neu - p_pos, 4)
+        tokens = self._preprocessor.transform([text])[0]
+        indices = [self._vocab.get(token, 1) for token in tokens[:self._max_len]]
+        indices.extend([0] * (self._max_len - len(indices)))
+        input_ids = self._torch.tensor([indices], dtype=self._torch.long)
+        with self._torch.inference_mode():
+            logits = self._models[model_name](input_ids)
+            probabilities = self._torch.softmax(logits, dim=1)[0].tolist()
+        predicted_id = max(range(len(probabilities)), key=probabilities.__getitem__)
+        pred = ID_TO_LABEL[predicted_id]
 
         scores = {
-            "negative": round(p_neg, 4),
-            "neutral": round(p_neu, 4),
-            "positive": round(p_pos, 4),
+            label: round(float(probabilities[class_id]), 4)
+            for class_id, label in ID_TO_LABEL.items()
         }
         confidence = scores[pred]
 
-        elapsed_ms = round((time.perf_counter() - t0) * 1000.0 + 8.5, 2)
+        elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
         lang = detect_language_mix(text)
 
         # Update stats

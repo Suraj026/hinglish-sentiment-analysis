@@ -74,8 +74,8 @@ export const AnalyzeText: React.FC = () => {
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="> Type or paste code-mixed review text here... (e.g. 'Yeh product bohot hi bekar nikla')"
-                  className="w-full h-36 bg-[#0a0e17] border border-[#3d494c] p-3 font-mono text-xs text-black placeholder-slate-500 focus:outline-none focus:border-brand-cyan resize-none"
-                  style={{ color: '#000000' }}
+                  className="w-full h-36 bg-[#0a0e17] border border-[#3d494c] p-3 font-mono text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-cyan resize-none"
+                  style={{ color: '#ffffff' }}
                 />
                 <div className="absolute right-3 bottom-3 font-mono text-[10px] text-slate-400">
                   {inputText.length} CHARS

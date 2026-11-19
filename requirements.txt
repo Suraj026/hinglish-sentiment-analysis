@@ -11,3 +11,4 @@ gradio
 fastapi
 uvicorn[standard]
 python-multipart
+torch>=2.0
