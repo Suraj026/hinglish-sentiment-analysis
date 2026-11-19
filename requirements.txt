@@ -12,3 +12,10 @@ fastapi
 uvicorn[standard]
 python-multipart
 torch>=2.0
+vaderSentiment
+transformers
+sentencepiece
+datasets
+peft
+accelerate
+safetensors
