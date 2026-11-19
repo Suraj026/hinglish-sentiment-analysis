@@ -20,3 +20,25 @@ def test_prediction_uses_trained_neural_checkpoint():
             result.scores.positive,
         )
     ) == pytest.approx(1.0, abs=0.0002)
+
+
+def test_new_registry_does_not_report_hardcoded_usage():
+    registry = ModelRegistry()
+
+    assert registry.get_stats()["total_analyzed"] == 0
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("This movie is absolutely fantastic", "positive"),
+        ("This is terrible", "negative"),
+        ("This service is disappointing", "negative"),
+        ("Bahut badhiya service", "positive"),
+    ],
+)
+def test_real_world_examples_are_not_neutral(text, expected):
+    registry = ModelRegistry()
+    registry.initialize()
+
+    assert registry.predict(text, "bilstm_conv").sentiment == expected

@@ -41,9 +41,9 @@ class SentimentResult(BaseModel):
 
 class BatchResult(BaseModel):
     results: list[SentimentResult]
-    total_texts: int
     model_name: str
-    total_processing_time_ms: float
+    total_time_ms: float
+    count: int
 
 
 class ModelInfo(BaseModel):

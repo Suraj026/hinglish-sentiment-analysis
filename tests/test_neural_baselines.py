@@ -10,7 +10,7 @@ from src.models import (
     LSTMClassifier,
     build_model,
 )
-from src.train import overfit_test
+from src.train import compute_class_weights, overfit_test
 
 
 def test_model_forward_shapes():
@@ -68,4 +68,11 @@ def test_overfit_test_decreases_loss():
 
     final_loss = overfit_test(model, batch, device, iterations=25, lr=5e-2)
     assert final_loss < 0.5
+
+
+def test_class_weights_counteract_label_imbalance():
+    weights = compute_class_weights([0, 0, 0, 1, 1, 2])
+
+    assert weights.tolist()[2] > weights.tolist()[1]
+    assert weights.tolist()[1] > weights.tolist()[0]
 

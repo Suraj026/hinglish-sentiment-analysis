@@ -79,5 +79,7 @@ def build_embedding_matrix(
         if token == "<pad>":
             continue
         if token in model.wv:
-            matrix[index] = model.wv[token][:embedding_dim]
+            vector = model.wv[token]
+            copy_dim = min(len(vector), embedding_dim)
+            matrix[index, :copy_dim] = vector[:copy_dim]
     return matrix

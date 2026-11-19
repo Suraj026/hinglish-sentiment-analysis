@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import html
+import unicodedata
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -37,12 +39,77 @@ class Preprocessor:
             for token in self._tokenizer.tokenize(str(text or "")):
                 lowered = token.lower()
                 counts[lowered] = counts.get(lowered, 0) + 1
-        self.spelling_map = {
-            "nahin": "nahi",
-            "nahee": "nahi",
-            "nahein": "nahi",
-        }
+        spelling_map: dict[str, str] = {}
+        eligible = [
+            (token, count)
+            for token, count in counts.items()
+            if len(token) >= 3 and token.isalpha()
+        ]
+        candidate_index: dict[tuple[int, str], list[str]] = {}
+        for token, _ in eligible:
+            for key in ((len(token), token[0]), (len(token), token[-1])):
+                candidate_index.setdefault(key, []).append(token)
+        for variant, variant_count in eligible:
+            candidate_names: set[str] = set()
+            length = len(variant)
+            candidate_names.update(candidate_index.get((length, variant[0]), []))
+            candidate_names.update(candidate_index.get((length, variant[-1]), []))
+            candidates = []
+            for candidate in candidate_names:
+                candidate_count = counts[candidate]
+                if candidate != variant and (
+                    len(candidate) == len(variant)
+                    and self._near_spelling_distance(candidate, variant) == 1
+                ):
+                    candidates.append((candidate, candidate_count))
+            if not candidates:
+                continue
+            candidate, candidate_count = min(
+                candidates,
+                key=lambda item: (
+                    -item[1],
+                    len(item[0]),
+                    item[0],
+                ),
+            )
+            if candidate_count >= variant_count * 2:
+                spelling_map[variant] = candidate
+        self.spelling_map = spelling_map
         return self
+
+    @staticmethod
+    def _near_spelling_distance(left: str, right: str) -> int:
+        if len(left) == len(right):
+            mismatches = [
+                index
+                for index, (left_char, right_char) in enumerate(zip(left, right))
+                if left_char != right_char
+            ]
+            if len(mismatches) == 1:
+                return 1
+            if len(mismatches) == 2:
+                first, second = mismatches
+                if (
+                    second == first + 1
+                    and left[first] == right[second]
+                    and left[second] == right[first]
+                ):
+                    return 1
+        if abs(len(left) - len(right)) == 1:
+            shorter = left if len(left) < len(right) else right
+            longer = right if len(left) < len(right) else left
+            first_difference = next(
+                (
+                    index
+                    for index, (short_char, long_char)
+                    in enumerate(zip(shorter, longer))
+                    if short_char != long_char
+                ),
+                len(shorter),
+            )
+            if shorter == longer[:first_difference] + longer[first_difference + 1 :]:
+                return 1
+        return 2
 
     def transform(self, texts: Iterable[str]) -> list[list[str]]:
         return [self._transform_tokens(str(text or "")) for text in texts]
@@ -53,6 +120,7 @@ class Preprocessor:
     def _transform_tokens(self, text: str) -> list[str]:
         if not text:
             return []
+        text = unicodedata.normalize("NFKC", html.unescape(str(text)))
         tokens = self._tokenizer.tokenize(text)
         output: list[str] = []
         for token in tokens:

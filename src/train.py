@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import random
 import time
-from typing import Mapping
+from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -20,6 +20,7 @@ from torch.utils.data import DataLoader
 from src.contracts import LABEL_TO_ID, validate_prediction_frame
 from src.dataset import HinglishDataset, create_dataloader, load_vocab
 from src.evaluate import append_result_row, compute_metrics, load_predictions
+from src.features import build_embedding_matrix
 from src.models import build_model
 from src.preprocess import Preprocessor
 
@@ -33,6 +34,14 @@ def set_seed(seed: int = 42) -> None:
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+
+
+def compute_class_weights(labels: Sequence[int]) -> torch.Tensor:
+    counts = np.bincount(np.asarray(labels, dtype=np.int64), minlength=3).astype(
+        np.float64
+    )
+    weights = len(labels) / (len(counts) * np.maximum(counts, 1))
+    return torch.tensor(weights, dtype=torch.float32)
 
 
 def overfit_test(
@@ -203,6 +212,15 @@ def train_baseline_model(
     )
 
     # Initialize model
+    pretrained_embeddings = None
+    if embedding_type == "fasttext":
+        fasttext_path = root / "embeddings" / "fasttext.model"
+        if fasttext_path.exists():
+            pretrained_embeddings = build_embedding_matrix(
+                fasttext_path,
+                vocab,
+                embedding_dim,
+            )
     model = build_model(
         model_name=model_name,
         vocab_size=vocab_size,
@@ -210,6 +228,11 @@ def train_baseline_model(
         hidden_dim=hidden_dim,
         num_classes=3,
         padding_idx=0,
+        pretrained_embeddings=(
+            torch.tensor(pretrained_embeddings, dtype=torch.float32)
+            if pretrained_embeddings is not None
+            else None
+        ),
     ).to(device)
 
     # Small-batch overfit sanity test
@@ -321,7 +344,12 @@ def run_all_baselines(repo_root: Path | None = None, seed: int = 42) -> list[dic
     models_to_run = ["lstm", "bilstm", "cnn", "bilstm_conv"]
     summaries = []
     for model_name in models_to_run:
-        summary = train_baseline_model(model_name=model_name, repo_root=repo_root, seed=seed)
+        summary = train_baseline_model(
+            model_name=model_name,
+            repo_root=repo_root,
+            embedding_type="random",
+            seed=seed,
+        )
         summaries.append(summary)
     return summaries
 

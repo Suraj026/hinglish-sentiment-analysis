@@ -14,11 +14,13 @@ def test_normalized_text_removes_urls_mentions_symbols_and_emoji():
 
 
 def test_normalization_removes_hashtag_marker_and_missing_tokens():
-    processor = Preprocessor(PreprocessConfig()).fit(["dummy"])
+    processor = Preprocessor(PreprocessConfig()).fit(
+        ["achha achha accha"]
+    )
 
     assert processor.transform_text(
-        "Soooo good!!! 😊 #Movie Nahein nan"
-    ) == "soo good movie nahi"
+        "Soooo good!!! 😊 #Movie Accha nan"
+    ) == "soo good movie achha"
 
 
 def test_raw_mode_preserves_case_and_repeated_spelling():
@@ -43,6 +45,14 @@ def test_preprocessor_persistence_round_trip(tmp_path: Path):
     restored = Preprocessor.load(path)
 
     assert restored.transform_text("nahi") == preprocessor.transform_text("nahi")
+
+
+def test_spelling_variants_are_learned_from_training_counts():
+    preprocessor = Preprocessor(PreprocessConfig()).fit(
+        ["achha achha achha accha"]
+    )
+
+    assert preprocessor.transform_text("accha") == "achha"
 
 
 def test_process_split_preserves_uid_and_labels(tmp_path: Path):
