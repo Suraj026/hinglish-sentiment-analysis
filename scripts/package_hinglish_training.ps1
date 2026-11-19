@@ -8,6 +8,7 @@ $packageFiles = @(
     "data",
     "scripts",
     "docs",
+    "notebooks",
     "requirements.txt",
     "README.md"
 )

@@ -64,7 +64,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-length", type=int, default=128)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--learning-rate", type=float, default=2e-5)
-    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--gradient-accumulation-steps", type=int, default=2)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--warmup-ratio", type=float, default=0.06)
@@ -183,6 +184,7 @@ def train(args: argparse.Namespace) -> dict[str, object]:
         output_dir=str(args.output_dir),
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
         learning_rate=args.learning_rate,
         num_train_epochs=args.epochs,
         weight_decay=args.weight_decay,

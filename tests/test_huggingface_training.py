@@ -30,7 +30,8 @@ def test_parse_args_uses_xlmr_and_lora_defaults():
     assert args.max_length == 128
     assert args.batch_size == 16
     assert args.learning_rate == 2e-5
-    assert args.epochs == 5
+    assert args.epochs == 3
+    assert args.gradient_accumulation_steps == 2
     assert args.dry_run is True
 
 
@@ -81,6 +82,13 @@ def test_friend_pc_guide_contains_cuda_and_transfer_commands():
     assert "nvidia-smi" in guide
     assert "python src/huggingface_training.py --train" in guide
     assert "xlmr-model.zip" in guide
+
+
+def test_guide_contains_colab_and_local_inference_commands():
+    guide = Path("docs/XLMR_TRAINING.md").read_text(encoding="utf-8")
+    assert "Google Colab" in guide
+    assert "notebooks/train_xlmr_colab.ipynb" in guide
+    assert "scripts/predict_xlmr.py" in guide
 
 
 def test_project_zip_script_excludes_virtual_environment():
