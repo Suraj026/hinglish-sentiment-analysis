@@ -2,13 +2,32 @@
 
 This guide trains `FacebookAI/xlm-roberta-base` on a friend's Windows NVIDIA-GPU PC. It does not start training on the no-GPU PC.
 
-## 1. Verify the GPU PC
+## 1. Create the project ZIP on your PC
+
+Run this from the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/package_hinglish_training.ps1
+```
+
+This creates `hinglish-training.zip` and includes only `src/`, `data/`, `scripts/`, `docs/`, `requirements.txt`, and `README.md`. It does not include `.venv`, `.git`, `frontend/node_modules`, or build outputs.
+
+Send `hinglish-training.zip` to the friend's GPU PC.
+
+## 2. Extract and open the project on the friend's PC
+
+```powershell
+Expand-Archive -Path hinglish-training.zip -DestinationPath hinglish-sentiment-analysis
+cd hinglish-sentiment-analysis
+```
+
+Do not copy or reuse your local `.venv`. Create a new virtual environment on the GPU PC.
+
+## 3. Verify the GPU PC
 
 ```powershell
 nvidia-smi
 py -3.10 --version
-git clone https://github.com/Suraj026/hinglish-sentiment-analysis.git
-cd hinglish-sentiment-analysis
 ```
 
 Use one of these CUDA-compatible PyTorch installations:
@@ -29,7 +48,7 @@ Confirm PyTorch can see the GPU:
 python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no GPU')"
 ```
 
-## 2. Install the project
+## 4. Install the project
 
 ```powershell
 py -3.10 -m venv .venv
@@ -38,7 +57,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-## 3. Validate without training
+## 5. Validate without training
 
 ```powershell
 python src/huggingface_training.py
@@ -46,10 +65,16 @@ python src/huggingface_training.py
 
 This validates the train/validation schemas and prints a dry-run result. It does not download the training base model or write checkpoints.
 
-## 4. Fine-tune with LoRA
+## 6. Fine-tune with LoRA
 
 ```powershell
 python src/huggingface_training.py --train
+```
+
+For the repository helper that creates the environment, validates dependencies, checks the GPU, and starts training:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/train_xlmr_friend_pc.ps1 -Mode train
 ```
 
 Default training settings:
@@ -66,7 +91,7 @@ Default training settings:
 
 The script saves the best adapter under `results/huggingface/xlm_roberta_lora/` and the merged standalone model under `results/huggingface/xlm_roberta_merged/`.
 
-## 5. Export for your PC
+## 7. Export for your PC
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/export_xlmr_model.ps1
@@ -76,7 +101,7 @@ This creates `xlmr-model.zip`.
 
 Transfer `xlmr-model.zip` using Google Drive, OneDrive, USB, or Hugging Face Hub. Do not transfer only the LoRA adapter unless you also transfer the base model and adapter separately.
 
-## 6. Load on your no-GPU PC
+## 8. Load on your no-GPU PC
 
 ```powershell
 Expand-Archive -Path xlmr-model.zip -DestinationPath xlmr-model

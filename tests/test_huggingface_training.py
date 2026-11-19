@@ -81,3 +81,10 @@ def test_friend_pc_guide_contains_cuda_and_transfer_commands():
     assert "nvidia-smi" in guide
     assert "python src/huggingface_training.py --train" in guide
     assert "xlmr-model.zip" in guide
+
+
+def test_project_zip_script_excludes_virtual_environment():
+    script = Path("scripts/package_hinglish_training.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert ".venv" not in script
